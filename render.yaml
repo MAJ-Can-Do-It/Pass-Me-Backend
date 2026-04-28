@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: pass-me-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: FIREBASE_PROJECT_ID
+        value: passme-1df1e
+      - key: JWT_EXPIRE
+        value: 7d
+      - key: PORT
+        value: '3000'
