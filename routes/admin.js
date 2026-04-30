@@ -73,7 +73,7 @@ router.get('/users', asyncHandler(async (req, res) => {
   ]);
   const students = studentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), type: 'student' }));
   const tutors = tutorsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), type: 'tutor' }));
-  res.json({ students: students.length, tutors: tutors.length, users: [...students, tutors] });
+  res.json({ students: students.length, tutors: tutors.length, users: [...students, ...tutors] });
 }));
 
 router.post('/users/:id/block', asyncHandler(async (req, res) => {
