@@ -155,10 +155,12 @@ export async function getTutorApplications() {
   try {
     const snapshot = await db.collection('tutor_applications')
       .where('status', '==', 'pending')
-      .orderBy('createdAt', 'desc')
       .get();
 
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Sort by createdAt in memory instead of in database to avoid index requirement
+    return snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .sort((a, b) => (b.createdAt?.getTime?.() || 0) - (a.createdAt?.getTime?.() || 0));
   } catch (error) {
     logger.error('Error getting tutor applications:', error);
     throw error;
