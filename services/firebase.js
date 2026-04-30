@@ -3,6 +3,13 @@ import { logger } from '../utils/logger.js';
 
 export async function getAdminByEmail(email) {
   try {
+    // Try direct document fetch first (hardcoded admin1)
+    const doc = await db.collection('admins').doc('admin1').get();
+    if (doc.exists && doc.data().email.toLowerCase() === email.toLowerCase()) {
+      return { id: doc.id, ...doc.data() };
+    }
+
+    // Fallback to query if direct fetch doesn't match
     const snapshot = await db.collection('admins')
       .where('email', '==', email.toLowerCase())
       .limit(1)
