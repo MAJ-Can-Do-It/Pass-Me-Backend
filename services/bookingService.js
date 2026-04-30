@@ -2,6 +2,36 @@ import { db } from '../config/firebase.js';
 import { logger } from '../utils/logger.js';
 import { calculateEarnings, calculatePlatformFee } from '../utils/validators.js';
 
+export async function createBooking(bookingData) {
+  try {
+    const docRef = await db.collection('bookings').add({
+      ...bookingData,
+      status: 'pending',
+      createdAt: new Date(),
+      approvedAt: null,
+      completedAt: null,
+      cancelledAt: null
+    });
+
+    logger.info('Booking created', { bookingId: docRef.id });
+    return docRef.id;
+  } catch (error) {
+    logger.error('Error creating booking:', error);
+    throw error;
+  }
+}
+
+export async function getBookingById(bookingId) {
+  try {
+    const doc = await db.collection('bookings').doc(bookingId).get();
+    if (!doc.exists) return null;
+    return { id: doc.id, ...doc.data() };
+  } catch (error) {
+    logger.error('Error getting booking:', error);
+    throw error;
+  }
+}
+
 export async function approveBooking(bookingId, tutorEmail) {
   try {
     const bookingRef = db.collection('bookings').doc(bookingId);

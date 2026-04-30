@@ -1,4 +1,5 @@
 import express from 'express';
+import axios from 'axios';
 import {
   getAdminByEmail,
   getStudentByEmail,
@@ -236,6 +237,137 @@ router.post('/reset-password-confirm', asyncHandler(async (req, res) => {
   } catch (error) {
     logger.error('Error resetting password:', error);
     res.status(500).json({ error: 'An error occurred' });
+  }
+}));
+
+router.post('/tutor/register', asyncHandler(async (req, res) => {
+  const { fullName, email, school, program, year, subjects, individual, group, bio, experience, telegram, phone, availability } = req.body;
+
+  if (!fullName || !email || !school || !program || !subjects) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  try {
+    const docRef = await db.collection('tutor_applications').add({
+      fullName,
+      email,
+      school,
+      program,
+      year: parseInt(year),
+      subjects: Array.isArray(subjects) ? subjects : [subjects],
+      individual: parseInt(individual),
+      group: parseInt(group),
+      bio,
+      experience,
+      telegram,
+      phone,
+      availability: Array.isArray(availability) ? availability : [],
+      status: 'pending',
+      createdAt: new Date()
+    });
+
+    logger.info('Tutor application submitted', { email, applicationId: docRef.id });
+    res.status(201).json({
+      message: 'Application submitted successfully',
+      applicationId: docRef.id
+    });
+  } catch (error) {
+    logger.error('Error submitting tutor application:', error);
+    res.status(500).json({ error: 'Failed to submit application' });
+  }
+}));
+
+router.post('/google/callback', asyncHandler(async (req, res) => {
+  const { code, userType = 'student' } = req.body;
+
+  if (!code) {
+    return res.status(400).json({ error: 'Authorization token is required' });
+  }
+
+  try {
+    // Decode JWT from Google Sign-In (code is actually the JWT token)
+    const parts = code.split('.');
+    if (parts.length !== 3) {
+      return res.status(401).json({ error: 'Invalid token format' });
+    }
+
+    // Decode payload (no verification needed - Google signed it)
+    const decoded = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+    const { email, name, picture, sub } = decoded;
+
+    if (!email) {
+      return res.status(401).json({ error: 'Invalid token: no email' });
+    }
+
+    let user = null;
+    let token = null;
+    let userRole = null;
+
+    if (userType === 'student') {
+      user = await getStudentByEmail(email);
+
+      if (!user) {
+        const studentId = await createStudent(email, {
+          username: email.split('@')[0],
+          fullName: name || email.split('@')[0],
+          passwordHash: await hashPassword(Math.random().toString(36).slice(2)),
+          accountStatus: 'active',
+          googleId: sub,
+          profilePicture: picture,
+          school: '',
+          program: '',
+          year: 1
+        });
+
+        user = {
+          id: studentId,
+          email,
+          fullName: name || email.split('@')[0],
+          school: '',
+          program: '',
+          favorites: []
+        };
+      }
+
+      token = generateToken(user.id, 'student', email);
+      userRole = 'student';
+    } else if (userType === 'tutor') {
+      user = await getTutorByEmail(email);
+
+      if (!user || !user.approved) {
+        return res.status(403).json({ error: 'Tutor account not approved' });
+      }
+
+      token = generateToken(user.id, 'tutor', email);
+      userRole = 'tutor';
+    }
+
+    logger.info('Google OAuth login successful', { email, userType });
+
+    res.json({
+      token,
+      [userRole]: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        ...(userRole === 'student' && {
+          school: user.school || '',
+          program: user.program || '',
+          favorites: user.favorites || []
+        }),
+        ...(userRole === 'tutor' && {
+          school: user.school || '',
+          program: user.program || '',
+          subjects: user.subjects || [],
+          earnings: user.totalEarnings || 0,
+          rating: user.rating || 0,
+          sessions: user.sessions || 0
+        })
+      }
+    });
+  } catch (error) {
+    logger.error('Google OAuth error:', error.message);
+    res.status(401).json({ error: 'Authentication failed' });
   }
 }));
 
