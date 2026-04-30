@@ -29,14 +29,20 @@ const router = express.Router();
 router.post('/admin/login', loginValidation, validate, asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
+  logger.info('Admin login attempt', { email });
+
   const admin = await getAdminByEmail(email);
   if (!admin) {
-    return res.status(401).json({ error: 'Invalid credentials' });
+    logger.warn('Admin not found', { email });
+    return res.status(401).json({ error: 'Invalid credentials', debug: 'admin_not_found' });
   }
+
+  logger.info('Admin found, checking password', { email, hasHash: !!admin.passwordHash });
 
   const passwordMatch = await verifyPassword(password, admin.passwordHash);
   if (!passwordMatch) {
-    return res.status(401).json({ error: 'Invalid credentials' });
+    logger.warn('Password mismatch', { email });
+    return res.status(401).json({ error: 'Invalid credentials', debug: 'password_mismatch' });
   }
 
   const token = generateToken(admin.id || email, 'admin', email);
