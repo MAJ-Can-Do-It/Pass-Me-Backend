@@ -1,15 +1,13 @@
 import admin from 'firebase-admin';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 let serviceAccount;
 
 try {
-  const keyPath = process.env.FIREBASE_SERVICE_ACCOUNT_KEY || path.join(__dirname, '../serviceAccountKey.json');
-  serviceAccount = JSON.parse(fs.readFileSync(keyPath, 'utf8'));
+  const keyJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_JSON;
+  if (!keyJson) {
+    throw new Error('FIREBASE_SERVICE_ACCOUNT_KEY_JSON environment variable not set');
+  }
+  serviceAccount = JSON.parse(keyJson);
 } catch (error) {
   console.error('Error loading Firebase service account key:', error.message);
   process.exit(1);
