@@ -15,24 +15,20 @@ router.post('/', verifyStudent, bookingValidation, validate, asyncHandler(async 
   const { tutorId, date, time, duration, subject, type, studentNotes } = req.body;
   const studentId = req.user.id;
   const student = await getStudentById(studentId);
-  const tutor = await getTutorById(tutorId);
-  if (!student || !tutor) return res.status(404).json({ error: 'Student or tutor not found' });
+  if (!student) return res.status(404).json({ error: 'Student not found' });
 
   const bookingId = await createBooking({
-    studentId, tutorId, studentName: student.fullName, tutorName: tutor.fullName,
-    studentEmail: student.email, tutorEmail: tutor.email, date, time, duration, subject, type,
+    studentId, tutorId, studentName: student.fullName, tutorName: 'Tutor',
+    studentEmail: student.email, tutorEmail: 'tutor@passme.uz', date, time, duration, subject, type,
     studentNotes: studentNotes || ''
   });
 
   const bookingDetails = { bookingId, studentId, tutorId, studentName: student.fullName,
-    studentEmail: student.email, tutorName: tutor.fullName, subject, date, time, duration, type,
+    studentEmail: student.email, tutorName: 'Tutor', subject, date, time, duration, type,
     studentNotes: studentNotes || '' };
 
   try {
-    await Promise.all([
-      sendBookingNotificationToTutor(tutor.email, tutor.fullName, bookingDetails),
-      sendBookingConfirmationEmail(student.email, student.fullName, bookingDetails)
-    ]);
+    await sendBookingConfirmationEmail(student.email, student.fullName, bookingDetails);
     if (process.env.TELEGRAM_ADMIN_GROUP_ID) await sendBookingNotification(process.env.TELEGRAM_ADMIN_GROUP_ID, bookingDetails);
   } catch (emailError) {
     logger.warn('Failed to send booking notifications', emailError);
