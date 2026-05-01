@@ -45,7 +45,7 @@ router.post('/', verifyStudent, bookingValidation, validate, asyncHandler(async 
   logger.info('Booking created', { bookingId, studentId, tutorId });
 
   // Send admin notification
-  const bookingForNotif = { ...bookingData, id: bookingId };
+  const bookingForNotif = { ...bookingDetails, id: bookingId };
   const notification = formatBookingNotification(bookingForNotif, 'new');
   await sendAdminNotification(notification);
 
