@@ -43,6 +43,36 @@ router.get('/', asyncHandler(async (req, res) => {
   });
 }));
 
+router.get('/me', verifyTutor, asyncHandler(async (req, res) => {
+  const tutor = await getTutorById(req.user.id);
+
+  if (!tutor) {
+    return res.status(404).json({ error: 'Tutor profile not found' });
+  }
+
+  res.json({
+    id: tutor.id,
+    email: tutor.email,
+    fullName: tutor.fullName,
+    school: tutor.school,
+    program: tutor.program,
+    year: tutor.year,
+    subjects: tutor.subjects,
+    individual: tutor.individual,
+    group: tutor.group,
+    bio: tutor.bio,
+    experience: tutor.experience,
+    telegram: tutor.telegram,
+    phone: tutor.phone,
+    availability: tutor.availability,
+    rating: tutor.rating || 0,
+    sessions: tutor.sessions || 0,
+    totalEarnings: tutor.totalEarnings || 0,
+    totalPlatformFee: tutor.totalPlatformFee || 0,
+    accountStatus: tutor.accountStatus
+  });
+}));
+
 router.get('/:id', asyncHandler(async (req, res) => {
   const tutor = await getTutorById(req.params.id);
 
@@ -87,36 +117,6 @@ router.post('/register', tutorRegisterValidation, validate, asyncHandler(async (
   res.status(201).json({
     message: 'Application submitted successfully',
     applicationId
-  });
-}));
-
-router.get('/me', verifyTutor, asyncHandler(async (req, res) => {
-  const tutor = await getTutorById(req.user.id);
-
-  if (!tutor) {
-    return res.status(404).json({ error: 'Tutor profile not found' });
-  }
-
-  res.json({
-    id: tutor.id,
-    email: tutor.email,
-    fullName: tutor.fullName,
-    school: tutor.school,
-    program: tutor.program,
-    year: tutor.year,
-    subjects: tutor.subjects,
-    individual: tutor.individual,
-    group: tutor.group,
-    bio: tutor.bio,
-    experience: tutor.experience,
-    telegram: tutor.telegram,
-    phone: tutor.phone,
-    availability: tutor.availability,
-    rating: tutor.rating || 0,
-    sessions: tutor.sessions || 0,
-    totalEarnings: tutor.totalEarnings || 0,
-    totalPlatformFee: tutor.totalPlatformFee || 0,
-    accountStatus: tutor.accountStatus
   });
 }));
 
