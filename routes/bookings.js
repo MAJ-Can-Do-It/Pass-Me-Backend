@@ -12,15 +12,22 @@ import { db } from '../config/firebase.js';
 const router = express.Router();
 
 router.post('/', verifyStudent, bookingValidation, validate, asyncHandler(async (req, res) => {
-  const { tutorId, date, time, duration, subject, type, studentNotes } = req.body;
+  const { tutorId, date, time, duration, subject, type, studentNotes, amount, platformFee, tutorEarnings } = req.body;
   const studentId = req.user.id;
   const student = await getStudentById(studentId);
   if (!student) return res.status(404).json({ error: 'Student not found' });
 
+  // Validate course pricing
+  const validPrices = { individual: 800000, group: 350000 };
+  const expectedPrice = validPrices[type];
+  if (!expectedPrice || amount !== expectedPrice) {
+    return res.status(400).json({ error: 'Invalid course price' });
+  }
+
   const bookingId = await createBooking({
     studentId, tutorId, studentName: student.fullName, tutorName: 'Tutor',
     studentEmail: student.email, tutorEmail: 'tutor@passme.uz', date, time, duration, subject, type,
-    studentNotes: studentNotes || ''
+    studentNotes: studentNotes || '', amount, platformFee, tutorEarnings
   });
 
   const bookingDetails = { bookingId, studentId, tutorId, studentName: student.fullName,
@@ -91,14 +98,17 @@ router.put('/:id/reject', verifyTutor, asyncHandler(async (req, res) => {
 }));
 
 router.post('/:id/complete', verifyTutor, asyncHandler(async (req, res) => {
-  const { amount } = req.body;
   const booking = await getBookingById(req.params.id);
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
   if (booking.tutorId !== req.user.id) return res.status(403).json({ error: 'Access denied' });
   if (booking.status !== 'approved') return res.status(400).json({ error: 'Booking is not approved' });
-  if (!amount || amount < 0) return res.status(400).json({ error: 'Valid amount is required' });
-  await completeBooking(req.params.id, amount);
-  logger.info('Booking completed', { bookingId: req.params.id, amount });
+
+  // Use tutorEarnings from booking (70% of course price)
+  const tutorEarnings = booking.tutorEarnings || 0;
+  if (tutorEarnings <= 0) return res.status(400).json({ error: 'Invalid booking amount' });
+
+  await completeBooking(req.params.id, tutorEarnings);
+  logger.info('Booking completed', { bookingId: req.params.id, tutorEarnings });
   res.json({ message: 'Booking marked as completed' });
 }));
 
