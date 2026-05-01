@@ -33,7 +33,7 @@ router.post('/', verifyStudent, bookingValidation, validate, asyncHandler(async 
 
   const bookingDetails = { bookingId, studentId, tutorId, studentName: student.fullName,
     studentEmail: student.email, tutorName: 'Tutor', subject, date, time, duration, type,
-    studentNotes: studentNotes || '' };
+    studentNotes: studentNotes || '', amount, platformFee, tutorEarnings };
 
   try {
     await sendBookingConfirmationEmail(student.email, student.fullName, bookingDetails);
