@@ -70,6 +70,26 @@ router.delete('/:id', verifyStudent, asyncHandler(async (req, res) => {
   res.json({ message: 'Booking cancelled successfully' });
 }));
 
+router.put('/:id/approve', verifyTutor, asyncHandler(async (req, res) => {
+  const booking = await getBookingById(req.params.id);
+  if (!booking) return res.status(404).json({ error: 'Booking not found' });
+  if (booking.tutorId !== req.user.id) return res.status(403).json({ error: 'Access denied' });
+  if (booking.status !== 'pending') return res.status(400).json({ error: 'Booking is not pending' });
+  await db.collection('bookings').doc(req.params.id).update({ status: 'approved', approvedAt: new Date() });
+  logger.info('Booking approved by tutor', { bookingId: req.params.id, tutorId: req.user.id });
+  res.json({ message: 'Booking approved successfully' });
+}));
+
+router.put('/:id/reject', verifyTutor, asyncHandler(async (req, res) => {
+  const booking = await getBookingById(req.params.id);
+  if (!booking) return res.status(404).json({ error: 'Booking not found' });
+  if (booking.tutorId !== req.user.id) return res.status(403).json({ error: 'Access denied' });
+  if (booking.status !== 'pending') return res.status(400).json({ error: 'Booking is not pending' });
+  await db.collection('bookings').doc(req.params.id).update({ status: 'rejected', rejectedAt: new Date() });
+  logger.info('Booking rejected by tutor', { bookingId: req.params.id, tutorId: req.user.id });
+  res.json({ message: 'Booking rejected successfully' });
+}));
+
 router.post('/:id/complete', verifyTutor, asyncHandler(async (req, res) => {
   const { amount } = req.body;
   const booking = await getBookingById(req.params.id);
