@@ -5,13 +5,18 @@ const TELEGRAM_BOT_TOKEN = process.env.ADMIN_BOT_TOKEN;
 const ADMIN_GROUP_ID = process.env.ADMIN_GROUP_ID;
 
 export async function sendAdminNotification(message) {
+  logger.info('sendAdminNotification called', { hasToken: !!TELEGRAM_BOT_TOKEN, hasGroupId: !!ADMIN_GROUP_ID });
+
   if (!TELEGRAM_BOT_TOKEN || !ADMIN_GROUP_ID) {
-    logger.warn('Admin bot not configured - skipping notification');
+    logger.warn('Admin bot not configured - ADMIN_BOT_TOKEN or ADMIN_GROUP_ID missing');
+    console.error('Missing env vars:', { TELEGRAM_BOT_TOKEN: !!TELEGRAM_BOT_TOKEN, ADMIN_GROUP_ID: !!ADMIN_GROUP_ID });
     return;
   }
 
   try {
     const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+    logger.info('Sending Telegram notification', { url: url.substring(0, 50) + '...', groupId: ADMIN_GROUP_ID });
+
     const response = await axios.post(url, {
       chat_id: ADMIN_GROUP_ID,
       text: message,
@@ -21,8 +26,12 @@ export async function sendAdminNotification(message) {
     logger.info('Admin notification sent', { messageId: response.data.result.message_id });
     return response.data;
   } catch (error) {
-    logger.error('Failed to send admin notification:', error.message);
-    // Don't throw - booking should succeed even if notification fails
+    logger.error('Failed to send admin notification', {
+      error: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    });
+    console.error('Telegram API error:', error.response?.data || error.message);
   }
 }
 
