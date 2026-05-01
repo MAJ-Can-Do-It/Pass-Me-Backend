@@ -3,6 +3,7 @@ import { createBooking, getBookingById, approveBooking, completeBooking, cancelB
 import { getStudentById, getTutorById } from '../services/firebase.js';
 import { sendBookingNotificationToTutor, sendBookingConfirmationEmail } from '../services/email.js';
 import { sendBookingNotification } from '../services/telegram.js';
+import { sendAdminNotification, formatBookingNotification } from '../services/adminBot.js';
 import { bookingValidation, validate } from '../middleware/validation.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { verifyToken, verifyStudent, verifyTutor } from '../middleware/auth.js';
@@ -42,6 +43,12 @@ router.post('/', verifyStudent, bookingValidation, validate, asyncHandler(async 
   }
 
   logger.info('Booking created', { bookingId, studentId, tutorId });
+
+  // Send admin notification
+  const bookingForNotif = { ...bookingData, id: bookingId };
+  const notification = formatBookingNotification(bookingForNotif, 'new');
+  await sendAdminNotification(notification);
+
   res.status(201).json({ bookingId, message: 'Booking request submitted successfully' });
 }));
 
@@ -82,8 +89,15 @@ router.put('/:id/approve', verifyTutor, asyncHandler(async (req, res) => {
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
   if (booking.tutorId !== req.user.id) return res.status(403).json({ error: 'Access denied' });
   if (booking.status !== 'pending') return res.status(400).json({ error: 'Booking is not pending' });
+
   await db.collection('bookings').doc(req.params.id).update({ status: 'approved', approvedAt: new Date() });
   logger.info('Booking approved by tutor', { bookingId: req.params.id, tutorId: req.user.id });
+
+  // Send admin notification
+  const updatedBooking = { ...booking, status: 'approved', id: req.params.id };
+  const notification = formatBookingNotification(updatedBooking, 'approved');
+  await sendAdminNotification(notification);
+
   res.json({ message: 'Booking approved successfully' });
 }));
 
@@ -92,8 +106,15 @@ router.put('/:id/reject', verifyTutor, asyncHandler(async (req, res) => {
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
   if (booking.tutorId !== req.user.id) return res.status(403).json({ error: 'Access denied' });
   if (booking.status !== 'pending') return res.status(400).json({ error: 'Booking is not pending' });
+
   await db.collection('bookings').doc(req.params.id).update({ status: 'rejected', rejectedAt: new Date() });
   logger.info('Booking rejected by tutor', { bookingId: req.params.id, tutorId: req.user.id });
+
+  // Send admin notification
+  const updatedBooking = { ...booking, status: 'rejected', id: req.params.id };
+  const notification = formatBookingNotification(updatedBooking, 'rejected');
+  await sendAdminNotification(notification);
+
   res.json({ message: 'Booking rejected successfully' });
 }));
 
@@ -109,6 +130,12 @@ router.post('/:id/complete', verifyTutor, asyncHandler(async (req, res) => {
 
   await completeBooking(req.params.id, tutorEarnings);
   logger.info('Booking completed', { bookingId: req.params.id, tutorEarnings });
+
+  // Send admin notification
+  const completedBooking = { ...booking, status: 'completed', id: req.params.id };
+  const notification = formatBookingNotification(completedBooking, 'completed');
+  await sendAdminNotification(notification);
+
   res.json({ message: 'Booking marked as completed' });
 }));
 
