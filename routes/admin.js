@@ -80,9 +80,24 @@ router.post('/users/:id/block', asyncHandler(async (req, res) => {
   const { userType } = req.body;
   if (!userType || !['student', 'tutor'].includes(userType)) return res.status(400).json({ error: 'Valid userType required' });
   const collection = userType === 'student' ? 'students' : 'tutors';
-  await db.collection(collection).doc(req.params.id).update({ accountStatus: 'blocked', blockedAt: new Date() });
-  logger.info('User blocked', { userId: req.params.id, userType });
-  res.json({ message: 'User blocked successfully' });
+
+  // Get current user status
+  const user = await db.collection(collection).doc(req.params.id).get();
+  if (!user.exists) return res.status(404).json({ error: 'User not found' });
+
+  const currentStatus = user.data().accountStatus;
+  const newStatus = currentStatus === 'active' ? 'blocked' : 'active';
+  const updateData = { accountStatus: newStatus };
+
+  if (newStatus === 'blocked') {
+    updateData.blockedAt = new Date();
+  } else {
+    updateData.unblockedAt = new Date();
+  }
+
+  await db.collection(collection).doc(req.params.id).update(updateData);
+  logger.info('User status toggled', { userId: req.params.id, userType, newStatus });
+  res.json({ message: `User ${newStatus === 'blocked' ? 'blocked' : 'unblocked'} successfully` });
 }));
 
 // Booking Management
