@@ -12,12 +12,22 @@ import { db } from '../config/firebase.js';
 const router = express.Router();
 
 router.get('/dashboard', asyncHandler(async (req, res) => {
-  const [tutors, bookings, applications] = await Promise.all([getAllTutors(), getAllBookings(), getTutorApplications()]);
+  const [tutors, students, bookings, applications] = await Promise.all([
+    getAllTutors(),
+    db.collection('students').get(),
+    getAllBookings(),
+    getTutorApplications()
+  ]);
+
+  const studentsList = students.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   const totalRevenue = bookings.filter(b => b.status === 'completed').reduce((sum, b) => sum + (b.platformFee || 0), 0);
+
   res.json({
     stats: {
       tutors: tutors.length,
       approvedTutors: tutors.filter(t => t.approved).length,
+      totalStudents: studentsList.length,
+      activeStudents: studentsList.filter(s => s.accountStatus === 'active').length,
       pendingApplications: applications.length,
       bookings: bookings.length,
       completedBookings: bookings.filter(b => b.status === 'completed').length,
