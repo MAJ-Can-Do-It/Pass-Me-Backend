@@ -227,4 +227,23 @@ router.put('/tutors/:id', asyncHandler(async (req, res) => {
   res.json({ message: 'Application updated', applicationId: req.params.id });
 }));
 
+// TEMPORARY: Unblock all students (one-time use)
+router.post('/unblock-all-students', asyncHandler(async (req, res) => {
+  const snapshot = await db.collection('students').get();
+  let count = 0;
+
+  for (const doc of snapshot.docs) {
+    if (doc.data().accountStatus === 'blocked') {
+      await db.collection('students').doc(doc.id).update({
+        accountStatus: 'active',
+        unblockedAt: new Date()
+      });
+      count++;
+    }
+  }
+
+  logger.info('Unblocked all students', { count });
+  res.json({ message: `Unblocked ${count} students` });
+}));
+
 export default router;
